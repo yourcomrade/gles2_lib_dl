@@ -49,14 +49,101 @@ const char* check_egl_error(){
     }
     return "Unknown error!";
 }
-void gles2_init(egl_gbm_helper* my_helper){
+void gles2_init(egl_gbm_controller* my_controller, const char * file){
     //initialize 
-    my_helper->fd = open("/dev/dri/card1",O_RDWR | FD_CLOEXEC);
-    if(my_helper->fd < 0){
+    my_controller->fd = open(file,O_RDWR | FD_CLOEXEC);
+    if(my_controller->fd < 0){
         perror("Cannot open device driver file of graphic");
         abort();
     }
-    my_helper->gbm_dev = gbm_create_device(my_helper->fd);
+    my_controller->gbm_dev = gbm_create_device(my_controller->fd);
+    if(my_controller->gbm_dev == NULL){
+        perror("Cannot create gbm device");
+        abort();
+    }
+    //check for display
+    my_controller->display = eglGetDisplay((EGLNativeDisplayType)(my_controller->gbm_dev));
+    if(my_controller->display == EGL_NO_DISPLAY){
+        perror("eglGetDisplay fails!");
+        gbm_device_destroy(my_controller->gbm_dev);
+        close(my_controller->fd);
+        abort();
+    }
+    //initialize program
+    if(eglInitialize(my_controller->display,&(my_controller->majorVersion),
+    &(my_controller->minorVersion)) == EGL_FALSE){
+       fprintf(stderr, "Failed to get EGL version! Error: %s\n",
+                check_egl_error());
+        eglTerminate(my_controller->display);
+      
+        gbm_device_destroy(my_controller->gbm_dev);
+        close(my_controller->fd);
+        abort();
+    }
+    printf("EGL init with version %d.%d\n", my_controller->majorVersion, my_controller->minorVersion);
+    //Bind API
+    if(eglBindAPI(EGL_OPENGL_ES_API) == EGL_FALSE){
+        fprintf(stderr,"eglBindApi failed! Error: %s\n",check_egl_error());
+        eglTerminate(my_controller->display);
+        gbm_device_destroy(my_controller->gbm_dev);
+        close(my_controller->fd);
+        abort();
+    }
+    //Initialize config
+    if(eglChooseConfig(my_controller->display, configAttribs, &(my_controller->config),
+    1 , &(my_controller->numConfigs)) == EGL_FALSE){
+        fprintf(stderr, "eglChooseConfig failed! Error: %s\n", check_egl_error());
+        eglTerminate(my_controller->display);
+        gbm_device_destroy(my_controller->gbm_dev);
+        close(my_controller->fd);
+        abort();
+    }
 
+    //Create context
+   my_controller->context = eglCreateContext(my_controller->display, my_controller->config, EGL_NO_CONTEXT, contextAttribs);
+   if(my_controller->context == EGL_NO_CONTEXT){
+        fprintf(stderr, "eglCreateContext failed! Error: %s\n", check_egl_error());
+        eglTerminate(my_controller->display);
+        gbm_device_destroy(my_controller->gbm_dev);
+        close(my_controller->fd);
+        abort();
+   }
+}
 
+void gles2_destroy(egl_gbm_controller* my_controller){
+    eglDestroyContext (my_controller->display, my_controller->context);
+    eglTerminate (my_controller->display);
+    gbm_device_destroy (my_controller->gbm_dev);
+    close (my_controller->fd);
+}
+
+void gles2_make_pbo( egl_gbm_controller* my_controller, int width, int height){
+  
+    my_controller->gbm_surface = gbm_surface_create(my_controller->gbm_dev, width, height, GBM_FORMAT_RGBA8888, GBM_BO_USE_RENDERING);
+    if(my_controller->gbm_surface == NULL){
+        perror("Cannot create gbm surface!");
+        gles2_destroy(my_controller);
+        abort();
+    }
+    my_controller->surface = eglCreateWindowSurface(my_controller->display, my_controller->config,
+    (EGLNativeWindowType)my_controller->gbm_surface, NULL);
+    if(my_controller->surface == EGL_NO_SURFACE){
+        fprintf(stderr, "Cannot create window surface! Error: %s\n",check_egl_error());
+        gles2_destroy_pbo(my_controller);
+        abort();
+    }
+    if(eglMakeCurrent(my_controller->display, my_controller->surface,
+    my_controller->surface, my_controller->context) == EGL_FALSE){
+        fprintf(stderr, "Cannot bind current thread to compute! Error: %s\n", check_egl_error());
+        gles2_destroy_pbo(my_controller);
+        abort();
+    }
+}
+
+void gles2_destroy_pbo(egl_gbm_controller* my_controller){
+     if(eglDestroySurface(my_controller->display, my_controller->surface) == EGL_FALSE){
+        fprintf(stderr, "Cannot destroy surface! Error: %s\n", check_egl_error());
+        gles2_destroy(my_controller);
+        abort();
+     }
 }
