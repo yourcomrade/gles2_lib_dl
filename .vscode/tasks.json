@@ -14,6 +14,7 @@
                 "-lgbm",
                 "-lEGL",
                 "-lGLESv2",
+                "-lm",
                 "-I/usr/include/GLES2"
             ],
             "options": {

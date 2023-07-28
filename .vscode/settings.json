@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "gl2.h": "c",
+        "egl.h": "c"
+    }
+}
