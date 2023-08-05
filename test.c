@@ -6,22 +6,23 @@ egl_gbm_controller*  my_test = NULL;
 gles2_controller* my_con = NULL;
 
 void test_compute(egl_gbm_controller*my_sp, gles2_controller* my_controller){
-    float arr[20]={0.343f, 1.23f,2.345f, 3.4535f, 4.12345f, 5.67123f, 6.4223f, 7.43532f, 8.45231f, 9.12141f, 10.12341f,
+    float arr[20]={0.343f, -1.23f,-2.345f, -3.4535f, -4.12345f, 5.67123f, 6.4223f, 7.43532f, 8.45231f, 9.12141f, 10.12341f,
     11.23242f, 12.2324f, 13.2314f, 14.1314f, 15.1415f, 16.123151f, 17.131515f, 18.14141f, 19.14151f};
-    float arr1[20]={0.343f, 1.23f,2.345f, 3.4535f, 4.12345f, 5.67123f, 6.4223f, 7.43532f, 8.45231f, 9.12141f, 10.12341f,
-    11.23242f, 12.2324f, 13.2314f, 14.1314f, 15.1415f, 16.123151f, 17.131515f, 18.14141f, 19.14151f};
+    float arr1[20]={0.343f, -1.70141184e38f,2.345f, 3.4535f, 4.12345f, 5.67123f, 6.4223f, 7.43532f, 8.45231f, 9.12141f, 10.12341f,
+    11.23242f, 12.2324f, 13.2314f, 14.1314f, 1.70141184e38f, 16.123151f, 17.131515f, 18.14141f, 19.14151f};
     int n = 20;
     int my_sz = (int)floor(sqrt(n)) + 1;
     gles2_make_surface(my_sp, my_sz, my_sz);
     my_controller->num_text = 0;
     gles2_data* my_input = gles2_make_farr(arr, n);
+    gles2_data* my_inp1 = gles2_make_farr(arr1, n);
     gles2_data* res = gles2_make_farr(NULL, n);
     gles2_push_farr(my_controller,res, NULL,false);
     my_controller->frag_shader = fragment;
     my_controller->ver_shader = vertex;
     gles2_build(my_controller);
     gles2_push_farr(my_controller,my_input,"data" ,true);
-    gles2_push_farr(my_controller,my_input,"data1" ,true);
+    gles2_push_farr(my_controller,my_inp1,"data1" ,true);
     
     
     gles2_make_fbo(my_controller, res);

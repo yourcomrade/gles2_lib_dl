@@ -320,9 +320,7 @@ void gles2_pull_farr(float* data, size_t n, gles2_data* gpu_data){
 
     glReadPixels(0, 0, gpu_data->textSize, gpu_data->textSize, GL_RGBA, GL_UNSIGNED_BYTE, temp_arr);
     gles2_checkerror();
-    for(int i = 0; i < (gpu_data->textSize)*(gpu_data->textSize)*4; i++){
-        printf("temp_arr[%d]: %d\n", i, temp_arr[i]);
-    }
+  
     union convert{
         unsigned char u[4];
         float f;
