@@ -53,7 +53,7 @@ const char* check_egl_error(){
 
 void gles2_init(egl_gbm_controller* my_controller, const char * file){
     //initialize 
-    my_controller->fd = open(file,O_RDWR | FD_CLOEXEC);
+    my_controller->fd = open(file,O_RDWR);
     if(my_controller->fd < 0){
         perror("Cannot open device driver file of graphic");
         abort();
@@ -135,7 +135,8 @@ int gles2_matchconfig_egl(egl_gbm_controller* my_controller, uint32_t gbm_format
 
 void gles2_make_surface( egl_gbm_controller* my_controller, int width, int height){
   
-    my_controller->gbm_surface = gbm_surface_create(my_controller->gbm_dev, width, height, GBM_FORMAT_ARGB8888,  GBM_BO_USE_RENDERING);
+    my_controller->gbm_surface = gbm_surface_create(my_controller->gbm_dev, width, height, 
+    GBM_FORMAT_ARGB8888, GBM_BO_USE_RENDERING);
     if(my_controller->gbm_surface == NULL){
         perror("Cannot create gbm surface!");
         gles2_destroy(my_controller);
@@ -157,6 +158,7 @@ void gles2_make_surface( egl_gbm_controller* my_controller, int width, int heigh
         gles2_destroy(my_controller);
         abort();
     }
+
     my_controller->surface = eglCreateWindowSurface(my_controller->display, my_controller->configs[config_id],
     (EGLNativeWindowType)my_controller->gbm_surface, NULL);
     if(my_controller->surface == EGL_NO_SURFACE){
@@ -166,7 +168,7 @@ void gles2_make_surface( egl_gbm_controller* my_controller, int width, int heigh
         abort();
     }
    
-
+    
     if(eglMakeCurrent(my_controller->display, my_controller->surface,
     my_controller->surface, my_controller->context) == EGL_FALSE){
         fprintf(stderr, "Cannot bind current thread to compute! Error: %s\n", check_egl_error());
@@ -244,12 +246,18 @@ int gles2_checkerror(){
     }
     return 1;
 }
-void gles2_push_farr( gles2_data* gpu_data, bool is_input){
+void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, const char*name, bool is_input){
     printf("push data\n");
     glGenTextures(1,&(gpu_data->text_id));
-    //gles2_checkerror();
+    if(is_input){
+        
+        glActiveTexture(GL_TEXTURE0 + my_controller->num_text);
+        
+    }
+    
+  
     glBindTexture(GL_TEXTURE_2D,gpu_data->text_id);
-   // gles2_checkerror();
+  
     glTexParameteri(GL_TEXTURE_2D,
                     GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,
@@ -264,6 +272,7 @@ void gles2_push_farr( gles2_data* gpu_data, bool is_input){
         gles2_checkerror();
         return;
     }
+   
     union convert{
         unsigned char u[4];
         float f;
@@ -289,7 +298,11 @@ void gles2_push_farr( gles2_data* gpu_data, bool is_input){
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gpu_data->textSize, gpu_data->textSize, 
     0, GL_RGBA, GL_UNSIGNED_BYTE, temp_data);
     gles2_checkerror();
+    glUniform1i(glGetUniformLocation(my_controller->pro_id, name), my_controller->num_text);
+    printf("Done uniform\n");
+    gles2_checkerror();
     glFinish();
+    my_controller->num_text++;
     free(temp_data);
 }
 
@@ -410,6 +423,8 @@ void gles2_build(gles2_controller* my_controller){
 
 }
 void gles2_compute(gles2_controller* my_controller){
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     float vertices[]={
            // positions            // texture coords
            -1.0f,  1.0f, 0.0f,  0.0f, 1.0f,  // Top left
@@ -445,16 +460,16 @@ void gles2_compute(gles2_controller* my_controller){
    glFlush();
    //glEnable(GL_TEXTURE_2D);
    gles2_checkerror();
-   glClearColor(0.0, 0.0, 0.0, 0.0);
-   glClear(GL_COLOR_BUFFER_BIT);
+   
   
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(my_controller->pro_id, "data"), 0);
+
+   
    gles2_checkerror();
    //perform compute by drawing quad
    glDrawArrays(GL_TRIANGLE_STRIP,0,4);
    glFinish();
    gles2_checkerror();
+
 
 }
 void gles2_setViewport(int width, int height){

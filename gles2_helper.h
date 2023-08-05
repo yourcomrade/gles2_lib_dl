@@ -81,7 +81,7 @@ extern void gles2_destroy_surface(egl_gbm_controller* my_controller);
 extern gles2_data* gles2_make_farr(float *data, size_t n);
 extern gles2_data* gles2_make_iarr(int *data, size_t n);
 extern void gles2_make_fbo(gles2_controller* my_controller, gles2_data* gpu_data);
-extern void gles2_push_farr( gles2_data* gpu_data, bool is_input);
+extern void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, const char*name , bool is_input);
 extern void gles2_push_iarr(gles2_data* gpu_data);
 extern void gles2_pull_farr( float* data, size_t n,gles2_data* gpu_data);
 //extern void gles2_pull_iarr( float* data, size_t n,gles2_data* gpu_data);

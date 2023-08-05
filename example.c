@@ -1,171 +1,148 @@
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+#include <gbm.h>
+#include <EGL/egl.h>
+#include <GL/gl.h>
 #include <stdlib.h>
-    #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
 
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <fcntl.h>
+#define EXIT(msg) { fputs (msg, stderr); exit (EXIT_FAILURE); }
 
-    #include <EGL/egl.h>
-    #include <gbm.h>
+static int device;
 
-    struct my_display {
-        struct gbm_device *gbm;
-        EGLDisplay egl;
-    };
+static drmModeConnector *find_connector (drmModeRes *resources) {
+	// iterate the connectors
+	int i;
+	for (i=0; i<resources->count_connectors; i++) {
+		drmModeConnector *connector = drmModeGetConnector (device, resources->connectors[i]);
+		// pick the first connected connector
+		if (connector->connection == DRM_MODE_CONNECTED) {
+			return connector;
+		}
+		drmModeFreeConnector (connector);
+	}
+	// no connector found
+	return NULL;
+}
 
-    struct my_config {
-        struct my_display dpy;
-        EGLConfig egl;
-    };
+static drmModeEncoder *find_encoder (drmModeRes *resources, drmModeConnector *connector) {
+	if (connector->encoder_id) {
+		return drmModeGetEncoder (device, connector->encoder_id);
+	}
+	// no encoder found
+	return NULL;
+}
 
-    struct my_window {
-        struct my_config config;
-        struct gbm_surface *gbm;
-        EGLSurface egl;
-    };
+static uint32_t connector_id;
+static drmModeModeInfo mode_info;
+static drmModeCrtc *crtc;
 
-    static void
-    check_extensions(void)
-    {
-    #ifdef EGL_KHR_platform_gbm
-        const char *client_extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+static void find_display_configuration () {
+	drmModeRes *resources = drmModeGetResources (device);
+	// find a connector
+	drmModeConnector *connector = find_connector (resources);
+	if (!connector) EXIT ("no connector found\n");
+	// save the connector_id
+	connector_id = connector->connector_id;
+	// save the first mode
+	mode_info = connector->modes[0];
+	printf ("resolution: %ix%i\n", mode_info.hdisplay, mode_info.vdisplay);
+	// find an encoder
+	drmModeEncoder *encoder = find_encoder (resources, connector);
+	if (!encoder) EXIT ("no encoder found\n");
+	// find a CRTC
+	if (encoder->crtc_id) {
+		crtc = drmModeGetCrtc (device, encoder->crtc_id);
+	}
+	drmModeFreeEncoder (encoder);
+	drmModeFreeConnector (connector);
+	drmModeFreeResources (resources);
+}
 
-        if (!client_extensions) {
-            // No client extensions string available
-            abort();
-        }
-        if (!strstr(client_extensions, "EGL_KHR_platform_gbm")) {
-            abort();
-        }
-    #endif
-    }
+static struct gbm_device *gbm_device;
+static EGLDisplay display;
+static EGLContext context;
+static struct gbm_surface *gbm_surface;
+static EGLSurface egl_surface;
 
-    static struct my_display
-    get_display(void)
-    {
-        struct my_display dpy;
+static void setup_opengl () {
+	gbm_device = gbm_create_device (device);
+	display = eglGetDisplay (gbm_device);
+	eglInitialize (display, NULL, NULL);
+	
+	// create an OpenGL context
+	eglBindAPI (EGL_OPENGL_API);
+	EGLint attributes[] = {
+		EGL_RED_SIZE, 8,
+		EGL_GREEN_SIZE, 8,
+		EGL_BLUE_SIZE, 8,
+	EGL_NONE};
+	EGLConfig config;
+	EGLint num_config;
+	eglChooseConfig (display, attributes, &config, 1, &num_config);
+	context = eglCreateContext (display, config, EGL_NO_CONTEXT, NULL);
+	
+	// create the GBM and EGL surface
+	gbm_surface = gbm_surface_create (gbm_device, mode_info.hdisplay, mode_info.vdisplay, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
+	egl_surface = eglCreateWindowSurface (display, config, gbm_surface, NULL);
+	eglMakeCurrent (display, egl_surface, egl_surface, context);
+}
 
-        int fd = open("/dev/dri/card1", O_RDWR | FD_CLOEXEC);
-        if (fd < 0) {
-            abort();
-        }
+static struct gbm_bo *previous_bo = NULL;
+static uint32_t previous_fb;
 
-        dpy.gbm = gbm_create_device(fd);
-        if (!dpy.gbm) {
-            abort();
-        }
+static void swap_buffers () {
+	eglSwapBuffers (display, egl_surface);
+	struct gbm_bo *bo = gbm_surface_lock_front_buffer (gbm_surface);
+	uint32_t handle = gbm_bo_get_handle (bo).u32;
+	uint32_t pitch = gbm_bo_get_stride (bo);
+	uint32_t fb;
+	drmModeAddFB (device, mode_info.hdisplay, mode_info.vdisplay, 24, 32, pitch, handle, &fb);
+	drmModeSetCrtc (device, crtc->crtc_id, fb, 0, 0, &connector_id, 1, &mode_info);
+	
+	if (previous_bo) {
+		drmModeRmFB (device, previous_fb);
+		gbm_surface_release_buffer (gbm_surface, previous_bo);
+	}
+	previous_bo = bo;
+	previous_fb = fb;
+}
 
+static void draw (float progress) {
+	glClearColor (1.0f-progress, progress, 0.0, 1.0);
+	glClear (GL_COLOR_BUFFER_BIT);
+	swap_buffers ();
+}
 
-    #ifdef EGL_KHR_platform_gbm
-        dpy.egl = eglGetPlatformDisplay(EGL_PLATFORM_GBM_KHR, dpy.gbm, NULL);
-    #else
-        dpy.egl = eglGetDisplay(dpy.gbm);
-    #endif
+static void clean_up () {
+	// set the previous crtc
+	drmModeSetCrtc (device, crtc->crtc_id, crtc->buffer_id, crtc->x, crtc->y, &connector_id, 1, &crtc->mode);
+	drmModeFreeCrtc (crtc);
+	
+	if (previous_bo) {
+		drmModeRmFB (device, previous_fb);
+		gbm_surface_release_buffer (gbm_surface, previous_bo);
+	}
+	
+	eglDestroySurface (display, egl_surface);
+	gbm_surface_destroy (gbm_surface);
+	eglDestroyContext (display, context);
+	eglTerminate (display);
+	gbm_device_destroy (gbm_device);
+}
 
-        if (dpy.egl == EGL_NO_DISPLAY) {
-            abort();
-        }
-
-        EGLint major, minor;
-        if (!eglInitialize(dpy.egl, &major, &minor)) {
-            abort();
-        }
-
-        return dpy;
-    }
-
-    static struct my_config
-    get_config(struct my_display dpy)
-    {
-        struct my_config config = {
-            .dpy = dpy,
-        };
-
-        EGLint egl_config_attribs[] = {
-            EGL_BUFFER_SIZE,        32,
-            EGL_DEPTH_SIZE,         EGL_DONT_CARE,
-            EGL_STENCIL_SIZE,       EGL_DONT_CARE,
-            EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-            EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-            EGL_NONE,
-        };
-
-        EGLint num_configs;
-        if (!eglGetConfigs(dpy.egl, NULL, 0, &num_configs)) {
-            abort();
-        }
-
-        EGLConfig *configs = malloc(num_configs * sizeof(EGLConfig));
-        if (!eglChooseConfig(dpy.egl, egl_config_attribs,
-                             configs, num_configs, &num_configs)) {
-            abort();
-        }
-        if (num_configs == 0) {
-            abort();
-        }
-
-        // Find a config whose native visual ID is the desired GBM format.
-        for (int i = 0; i < num_configs; ++i) {
-            EGLint gbm_format;
-
-            if (!eglGetConfigAttrib(dpy.egl, configs[i],
-                                    EGL_NATIVE_VISUAL_ID, &gbm_format)) {
-                abort();
-            }
-
-            if (gbm_format == GBM_FORMAT_XRGB8888) {
-                config.egl = configs[i];
-                free(configs);
-                return config;
-            }
-        }
-
-        // Failed to find a config with matching GBM format.
-        abort();
-    }
-
-    static struct my_window
-    get_window(struct my_config config)
-    {
-        struct my_window window = {
-            .config = config,
-        };
-
-        window.gbm = gbm_surface_create(config.dpy.gbm,
-                                        256, 256,
-                                        GBM_FORMAT_XRGB8888,
-                                        GBM_BO_USE_RENDERING);
-        if (!window.gbm) {
-            abort();
-        }
-
-    #ifdef EGL_KHR_platform_gbm
-        window.egl = eglCreatePlatformWindowSurface(config.dpy.egl,
-                                                    config.egl,
-                                                    window.gbm,
-                                                    NULL);
-    #else
-        window.egl = eglCreateWindowSurface(config.dpy.egl,
-                                            config.egl,
-                                            window.gbm,
-                                            NULL);
-    #endif
-
-        if (window.egl == EGL_NO_SURFACE) {
-            abort();
-        }
-
-        return window;
-    }
-
-    int
-    main(void)
-    {
-        check_extensions();
-
-        struct my_display dpy = get_display();
-        struct my_config config = get_config(dpy);
-        struct my_window window = get_window(config);
-
-        return 0;
-    }
+int main () {
+	device = open ("/dev/dri/card0", O_RDWR|O_CLOEXEC);
+	find_display_configuration ();
+	setup_opengl ();
+	
+	int i;
+	for (i = 0; i < 600; i++)
+		draw (i / 600.0f);
+	
+	clean_up ();
+	close (device);
+	return 0;
+}
