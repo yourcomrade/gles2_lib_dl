@@ -40,13 +40,14 @@ void test_compute(egl_gbm_controller*my_sp, gles2_controller* my_controller){
     }
     else{
         gles2_pull_farr(my_arr, n, res);
-        printf("Compare between old and new: \n");
+        printf("Result of data + data1: \n");
         for(int i = 0; i < n; i++){
-            printf("old: %f   new: %f\n", arr[i], my_arr[i]);
+            printf("data: %f + data1: %f  res: %f\n", arr[i],arr1[i] ,my_arr[i]);
         }
     }
    
     gles2_free_dev_farr(my_input);
+    gles2_free_dev_farr(my_inp1);
     gles2_free_dev_farr(res);
     gles2_free_host_farr(my_arr);
     gles2_destroy_fbo(my_controller);

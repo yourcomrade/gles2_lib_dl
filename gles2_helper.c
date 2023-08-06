@@ -208,7 +208,6 @@ gles2_data * gles2_make_farr(float * data, size_t n){
     }
     my_data->fdata = gpu_data;
     my_data->n = n;
-    my_data->tf = true;
     //Calculate texture dimension
     my_data->textSize = (int)floor(sqrt(n)) + 1;
     GLint maxsize;
@@ -294,12 +293,12 @@ void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, con
         printf("data: %d %d %d %d\n", temp_data[j], temp_data[j + 1], temp_data[j + 2], temp_data[j + 3]);
         j += 4;
     }
-    printf("Done\n");
+ 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gpu_data->textSize, gpu_data->textSize, 
     0, GL_RGBA, GL_UNSIGNED_BYTE, temp_data);
     gles2_checkerror();
     glUniform1i(glGetUniformLocation(my_controller->pro_id, name), my_controller->num_text);
-    printf("Done uniform\n");
+  
     gles2_checkerror();
     glFinish();
     my_controller->num_text++;
