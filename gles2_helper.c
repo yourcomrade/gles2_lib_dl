@@ -283,14 +283,14 @@ void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, con
         abort();
     }
     size_t j = 0;
-    printf("Before insert: \n");
+   
     for(size_t i = 0; i < gpu_data->n; i++){
         my_convert.f = gpu_data->fdata[i];
         temp_data[j] = my_convert.u[0];
         temp_data[j + 1] = my_convert.u[1];
         temp_data[j + 2] = my_convert.u[2];
         temp_data[j + 3] = my_convert.u[3];
-        printf("data: %d %d %d %d\n", temp_data[j], temp_data[j + 1], temp_data[j + 2], temp_data[j + 3]);
+        
         j += 4;
     }
  
@@ -332,8 +332,7 @@ void gles2_pull_farr(float* data, size_t n, gles2_data* gpu_data){
         my_convert.u[2] = temp_arr[i + 2];
         my_convert.u[3] = temp_arr[i + 3];
         gpu_data->fdata[j] = my_convert.f;
-        printf("temp_arr: %d %d %d %d\n", temp_arr[i], temp_arr[i + 1], temp_arr[i + 2], temp_arr[i + 3]);
-        printf("gpu data: %f\n", gpu_data->fdata[j]);
+       
         j++;
     }
     free(temp_arr);

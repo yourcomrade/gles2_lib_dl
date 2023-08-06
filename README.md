@@ -31,91 +31,9 @@ Max texture size support: 16384
 Max texture size support: 16384
 push data
 push data
-Before insert: 
-data: 178 157 175 62
-data: 164 112 157 191
-data: 123 20 22 192
-data: 37 6 93 192
-data: 77 243 131 192
-data: 183 122 181 64
-data: 123 131 205 64
-data: 36 238 237 64
-data: 169 60 7 65
-data: 76 241 17 65
-data: 125 249 33 65
-data: 254 183 51 65
-data: 233 183 67 65
-data: 208 179 83 65
-data: 55 26 98 65
-data: 150 67 114 65
-data: 55 252 128 65
-data: 88 13 137 65
-data: 156 33 145 65
-data: 208 33 153 65
 push data
-Before insert: 
-data: 178 157 175 62
-data: 0 0 0 255
-data: 123 20 22 64
-data: 37 6 93 64
-data: 77 243 131 64
-data: 183 122 181 64
-data: 123 131 205 64
-data: 36 238 237 64
-data: 169 60 7 65
-data: 76 241 17 65
-data: 125 249 33 65
-data: 254 183 51 65
-data: 233 183 67 65
-data: 208 179 83 65
-data: 55 26 98 65
-data: 0 0 0 127
-data: 55 252 128 65
-data: 88 13 137 65
-data: 156 33 145 65
-data: 208 33 153 65
 my_sz: 5
 pull data
-temp_arr: 178 157 47 63
-gpu data: 0.686000
-temp_arr: 0 0 128 255
-gpu data: -inf
-temp_arr: 0 0 0 0
-gpu data: 0.000000
-temp_arr: 0 0 0 0
-gpu data: 0.000000
-temp_arr: 0 0 0 0
-gpu data: 0.000000
-temp_arr: 183 122 53 65
-gpu data: 11.342460
-temp_arr: 124 131 77 65
-gpu data: 12.844601
-temp_arr: 37 238 109 65
-gpu data: 14.870641
-temp_arr: 169 60 135 65
-gpu data: 16.904619
-temp_arr: 76 241 145 65
-gpu data: 18.242821
-temp_arr: 125 249 161 65
-gpu data: 20.246820
-temp_arr: 254 183 179 65
-gpu data: 22.464840
-temp_arr: 234 183 195 65
-gpu data: 24.464802
-temp_arr: 209 179 211 65
-gpu data: 26.462801
-temp_arr: 56 26 226 65
-gpu data: 28.262802
-temp_arr: 0 0 128 127
-gpu data: inf
-temp_arr: 55 252 0 66
-gpu data: 32.246304
-temp_arr: 88 13 9 66
-gpu data: 34.263031
-temp_arr: 156 33 17 66
-gpu data: 36.282822
-temp_arr: 208 33 25 66
-gpu data: 38.283020
 Result of data + data1: 
 data: 0.343000 + data1: 0.343000  res: 0.686000
 data: -1.230000 + data1: -170141183460469231731687303715884105728.000000  res: -inf
