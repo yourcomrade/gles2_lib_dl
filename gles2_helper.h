@@ -118,9 +118,15 @@ extern gles2_data* gles2_make_farr(float *data, size_t n);
 */
 extern void gles2_make_fbo(gles2_controller* my_controller, gles2_data* gpu_data);
 /*
-* @brief function to push data to gpu memory
+* @brief function to push float array data to gpu memory
 */
 extern void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, const char*name , bool is_input);
+/*
+* @brief function to push single float number to gpu memory
+* @param gpu_data: floating point number
+* @param name: name of floating point number 
+*/
+extern void gles2_push_float(gles2_controller* my_controller, float gpu_data, const char*name );
 /*
 * @brief function to retrieve data from gpu memory back
 * @param data: data to contain result of gpu data, it can be NULL

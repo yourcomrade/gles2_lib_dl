@@ -304,7 +304,10 @@ void gles2_push_farr( gles2_controller* my_controller, gles2_data* gpu_data, con
     my_controller->num_text++;
     free(temp_data);
 }
-
+void gles2_push_float(gles2_controller* my_controller, float gpu_data, const char*name ){
+    glUniform1f(glGetUniformLocation(my_controller->pro_id, name), gpu_data);
+    gles2_checkerror();
+}
 void gles2_pull_farr(float* data, size_t n, gles2_data* gpu_data){
     printf("pull data\n");
     if(gpu_data->n < n){
